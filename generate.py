@@ -20,12 +20,13 @@ parser = argparse.ArgumentParser()
 # Data
 parser.add_argument("--data_file", type=str, required=True)
 parser.add_argument("--spm_file", type=str, required=True)
-# # Model
+# Model
 parser.add_argument("--dim_model", type=int, default=256)
 parser.add_argument("--checkpoint_path", type=str, required=True)
-# # Optim
+# Search
 parser.add_argument("--batch_size", type=int, default=128)
 parser.add_argument("--num_workers", type=int, default=1)
+parser.add_argument("--beam_size", type=int, default=1)
 
 args = parser.parse_args()
 
@@ -53,9 +54,7 @@ def main():
     model.load_state_dict(torch.load(args.checkpoint_path))
     model.eval()
 
-    searcher = BeamSearch(3, beam_size=1)
-
-    print('start!')
+    searcher = BeamSearch(3, beam_size=args.beam_size)
 
     with torch.no_grad():
         for _, categories, keyphrases in tqdm(loader):
@@ -70,10 +69,12 @@ def main():
             start_state = {'memory': memory, 'categories': categories, 'keyphrases_mask': keyphrases_mask}
 
             predictions, log_probabilities = searcher.search(start_predictions, start_state, model.step)
-            for pred in predictions:
-                pred = pred[(pred != 0) & (pred != 3)].tolist()
-                hyp = dataset.sp.decode(pred)
-                print(hyp)
+            for preds in predictions:
+                for pred in preds:
+                    pred = pred[(pred != 0) & (pred != 3)].tolist()
+                    hyp = dataset.sp.decode(pred)
+                    print(hyp)
+                print()
 
 
 if __name__ == '__main__':
