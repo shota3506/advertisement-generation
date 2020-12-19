@@ -54,3 +54,29 @@ class AdvertisementGenerator(nn.Module):
         weights = F.softmax(weights, dim=-1)
         context = torch.matmul(weights, value)
         return context, weights
+    
+    def step(self, last_predictions, state, timestep):
+        last_predictions = last_predictions.unsqueeze(1)
+        categories = state['categories'].unsqueeze(1)
+        memory = state['memory'] 
+        keyphrases_mask = state['keyphrases_mask']
+        hidden = state['hidden'].permute(1, 0, 2).contiguous() if 'hidden' in state else None
+        cell = state['cell'].permute(1, 0, 2).contiguous() if 'cell' in state else None
+
+        if timestep == 0:
+            embedded = self.dropout(self.category_embedding(categories))
+        else:
+            embedded = self.dropout(self.embedding(last_predictions))
+        output, (hidden, cell) = self.decoder(embedded, (hidden, cell) if hidden is not None else None)
+
+        # Attend keyphrases
+        context, _ = self.attention(output, memory, memory, keyphrases_mask)
+
+        output = self.fc(self.dropout(torch.cat([output, context], dim=-1)))
+        output = output.squeeze(1)
+        log_probabilities = F.log_softmax(output, dim=-1)
+
+        hidden = hidden.permute(1, 0, 2)
+        cell = cell.permute(1, 0, 2)
+        return log_probabilities, {'hidden': hidden, 'cell': cell,  'memory': memory, 'categories': categories, 'keyphrases_mask': keyphrases_mask}
+

@@ -26,7 +26,7 @@ parser.add_argument("--dim_model", type=int, default=256)
 parser.add_argument("--checkpoint_path", type=str, required=True)
 # # Optim
 parser.add_argument("--batch_size", type=int, default=128)
-parser.add_argument("--num_workers", type=int, default=1)
+parser.add_argument("--num_workers", type=int, default=2)
 parser.add_argument("--num_epochs", type=int, default=10)
 parser.add_argument("--learning_rate", type=float, default=0.001)
 parser.add_argument("--log_file", type=str, required=True)
