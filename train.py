@@ -21,8 +21,7 @@ parser.add_argument("--spm_file", type=str, required=True)
 parser.add_argument("--split_rate", type=float, default=0.2)
 # # Model
 parser.add_argument("--dim_model", type=int, default=256)
-# parser.add_argument("--use_pretrained", type=bool, default=True)
-# parser.add_argument("--checkpoint_path", type=str, required=True)
+parser.add_argument("--checkpoint_path", type=str, required=True)
 # # Optim
 parser.add_argument("--batch_size", type=int, default=128)
 parser.add_argument("--num_workers", type=int, default=1)
@@ -56,7 +55,7 @@ def main():
         sampler=valid_sampler,
         batch_size=args.batch_size,
         num_workers=args.num_workers,
-g        collate_fn=dataset.collate_fn,
+        collate_fn=dataset.collate_fn,
     )
     
     # Build datasets
@@ -73,13 +72,13 @@ g        collate_fn=dataset.collate_fn,
         pbar = tqdm(train_loader)
         pbar.set_description("Epoch %d" % (i_epoch+1))
         model.train()
-        for text, category, keyphrase in pbar:
-            text, category, keyphrase = text.to(device), category.to(device), keyphrase.to(device)
-            keyphrase_mask = (keyphrase[:, :, 0] == 0)
-            keyphrase_padding_mask = (keyphrase == 0)
+        for txts, categories, keyphrases in pbar:
+            txts, categories, keyphrases = txts.to(device), categories.to(device), keyphrases.to(device)
+            keyphrases_mask = (keyphrases[:, :, 0] == 0)
+            keyphrases_padding_mask = (keyphrases == 0)
 
-            output, _ = model(text, category, keyphrase, keyphrase_mask, keyphrase_padding_mask)
-            loss = criterion(output[:, :-1, :], text[:, 1:])
+            output, _ = model(txts, categories, keyphrases, keyphrases_mask, keyphrases_padding_mask)
+            loss = criterion(output[:, :-1, :], txts[:, 1:])
 
             optimizer.zero_grad()
             loss.backward()
@@ -90,13 +89,13 @@ g        collate_fn=dataset.collate_fn,
         model.eval()
         with torch.no_grad():
             pbar = valid_loader
-            for text, category, keyphrase in pbar:
-                text, category, keyphrase = text.to(device), category.to(device), keyphrase.to(device)
-                keyphrase_mask = (keyphrase[:, :, 0] == 0)
-                keyphrase_padding_mask = (keyphrase == 0)
+            for txts, categories, keyphrases in pbar:
+                txts, categories, keyphrases = txts.to(device), categories.to(device), keyphrases.to(device)
+                keyphrases_mask = (keyphrases[:, :, 0] == 0)
+                keyphrases_padding_mask = (keyphrases == 0)
 
-                output, _ = model(text, category, keyphrase, keyphrase_mask, keyphrase_padding_mask)
-                loss = criterion(output[:, :-1, :], text[:, 1:])
+                output, _ = model(txts, categories, keyphrases, keyphrases_mask, keyphrases_padding_mask)
+                loss = criterion(output[:, :-1, :], txts[:, 1:])
 
         torch.save(model.state_dict(), args.checkpoint_path)
 

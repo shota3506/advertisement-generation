@@ -20,25 +20,25 @@ class AdvertisementGenerator(nn.Module):
         self.decoder = nn.LSTM(dim_model, dim_model, num_layers, dropout=(dropout if num_layers > 1 else 0), batch_first=True)
         self.fc = nn.Linear(2*dim_model, num_embeddings)
 
-    def forward(self, text, category, keyphrase, keyphrase_mask=None, keyphrase_padding_mask=None):
+    def forward(self, txts, categories, keyphrases, keyphrases_mask=None, keyphrases_padding_mask=None):
         # Encode keyphrases
-        memory = self.encode_keyphrase(keyphrase, keyphrase_padding_mask)
+        memory = self.encode_keyphrase(keyphrases, keyphrases_padding_mask)
 
-        embedded = self.dropout(self.embedding(text))
-        embedded[:, 0, :] = self.dropout(self.category_embedding(category)) # Use category label as begginin of sequence
+        embedded = self.dropout(self.embedding(txts))
+        embedded[:, 0, :] = self.dropout(self.category_embedding(categories)) # Use category label as begginin of sequence
         output, state = self.decoder(embedded)
 
         # Attend keyphrases
-        context, _ = self.attention(output, memory, memory, keyphrase_mask)
+        context, _ = self.attention(output, memory, memory, keyphrases_mask)
 
         output = self.fc(self.dropout(torch.cat([output, context], dim=-1)))
         return output, state
 
-    def encode_keyphrase(self, keyphrase, keyphrase_padding_mask=None):
-        embedded = self.dropout(self.embedding(keyphrase))
-        if keyphrase_padding_mask is not None:
-            embedded[keyphrase_padding_mask] = 0.
-            ntokens = torch.sum(~keyphrase_padding_mask, dim=2, keepdim=True)
+    def encode_keyphrase(self, keyphrases, keyphrases_padding_mask=None):
+        embedded = self.dropout(self.embedding(keyphrases))
+        if keyphrases_padding_mask is not None:
+            embedded[keyphrases_padding_mask] = 0.
+            ntokens = torch.sum(~keyphrases_padding_mask, dim=2, keepdim=True)
             ntokens[ntokens == 0] = 1 # To avoid zero division
             output = torch.sum(embedded, dim=2) / ntokens.type_as(embedded)
         else:
