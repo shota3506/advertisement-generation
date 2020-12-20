@@ -8,17 +8,19 @@ class AdvertisementGenerator(nn.Module):
         self, 
         num_embeddings, 
         num_categories, 
-        dim_model, 
+        dim_embedding,
+        dim_hidden, 
         num_layers=2, 
         dropout=0.1
     ):
         super().__init__()
-        self.embedding = nn.Embedding(num_embeddings, dim_model)
-        self.category_embedding = nn.Embedding(num_categories, dim_model)
+        self.embedding = nn.Embedding(num_embeddings, dim_embedding)
+        self.category_embedding = nn.Embedding(num_categories, dim_embedding)
 
         self.dropout = nn.Dropout(dropout)
-        self.decoder = nn.LSTM(dim_model, dim_model, num_layers, dropout=(dropout if num_layers > 1 else 0), batch_first=True)
-        self.fc = nn.Linear(2*dim_model, num_embeddings)
+        self.decoder = nn.LSTM(dim_embedding, dim_hidden, num_layers, dropout=(dropout if num_layers > 1 else 0), batch_first=True)
+        self.fc = nn.Linear(2*dim_hidden, num_embeddings)
+        self.fc_memory = nn.Linear(dim_embedding, dim_hidden)
 
     def forward(self, txts, categories, keyphrases, keyphrases_mask=None, keyphrases_padding_mask=None):
         # Encode keyphrases
@@ -44,7 +46,7 @@ class AdvertisementGenerator(nn.Module):
         else:
             output = torch.mean(embedded, dim=2)
 
-        return output
+        return self.fc_memory(output)
 
     def attention(self, query, key, value, mask=None):
         weights = torch.matmul(query, key.transpose(-2, -1))

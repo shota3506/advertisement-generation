@@ -20,13 +20,13 @@ parser = argparse.ArgumentParser()
 # Data
 parser.add_argument("--data_file", type=str, required=True)
 parser.add_argument("--spm_file", type=str, required=True)
-parser.add_argument("--split_rate", type=float, default=0.2)
-# # Model
-parser.add_argument("--dim_model", type=int, default=256)
+# parser.add_argument("--split_rate", type=float, default=0.2)
+# Model
+parser.add_argument("--dim_embedding", type=int, default=256)
+parser.add_argument("--dim_hidden", type=int, default=512)
 parser.add_argument("--checkpoint_path", type=str, required=True)
-# # Optim
-parser.add_argument("--batch_size", type=int, default=128)
-parser.add_argument("--num_workers", type=int, default=2)
+# Optim
+parser.add_argument("--batch_size", type=int, default=64)
 parser.add_argument("--num_epochs", type=int, default=10)
 parser.add_argument("--learning_rate", type=float, default=0.001)
 parser.add_argument("--log_file", type=str, required=True)
@@ -37,25 +37,26 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     logger = logging.getLogger(__name__)
-    handler = logging.FileHandler(filename=args.log_file, mode='w')
-    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)8s %(message)s"))
-    handler.setLevel(logging.INFO)
+    handler1 = logging.StreamHandler()
+    handler1.setLevel(logging.INFO)
+    handler2 = logging.FileHandler(filename=args.log_file, mode='w')
+    handler2.setFormatter(logging.Formatter("%(asctime)s %(levelname)8s %(message)s"))
+    handler2.setLevel(logging.INFO)
     logger.setLevel(logging.INFO)
-    logger.addHandler(handler)
+    logger.addHandler(handler1)
+    logger.addHandler(handler2)
 
     # Build datasets
     dataset = AdvertisementDataset(args.data_file, args.spm_file)
 
     indices = list(range(len(dataset)))
-    split = int((1 - args.split_rate) *  len(dataset))
-    train_sampler = SubsetRandomSampler(indices[:split])
-    valid_sampler = SubsetRandomSampler(indices[split:])
+    train_sampler = SubsetRandomSampler(indices[:int(0.7 * len(dataset))])
+    valid_sampler = SubsetRandomSampler(indices[int(0.7 * len(dataset)):int(0.9 * len(dataset))])
 
     train_loader = DataLoader(
         dataset,
         sampler=train_sampler,
         batch_size=args.batch_size,
-        num_workers=args.num_workers,
         collate_fn=dataset.collate_fn,
     )
 
@@ -63,7 +64,6 @@ def main():
         dataset,
         sampler=valid_sampler,
         batch_size=args.batch_size,
-        num_workers=args.num_workers,
         collate_fn=dataset.collate_fn,
     )
     
@@ -71,7 +71,8 @@ def main():
     model = AdvertisementGenerator(
         num_embeddings=len(dataset.sp),
         num_categories=len(dataset.categories),
-        dim_model=args.dim_model,
+        dim_hidden=args.dim_hidden,
+        dim_embedding=args.dim_embedding,
     ).to(device)
     
     criterion = LabelSmoothedLmCrossEntropyLoss(0, label_smoothing=0.1, reduction='batchmean')
@@ -112,6 +113,8 @@ def main():
 
         logger.info('[Epoch %d] Train loss %.4f, Valid loss %.4f' % (i_epoch, mean(bookkeeper['Train loss']), mean(bookkeeper['Valid loss'])))
         torch.save(model.state_dict(), args.checkpoint_path)
+
+    logger.info('Done')
 
 if __name__ == '__main__':
     main()

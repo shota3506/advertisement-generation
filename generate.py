@@ -21,10 +21,11 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--data_file", type=str, required=True)
 parser.add_argument("--spm_file", type=str, required=True)
 # Model
-parser.add_argument("--dim_model", type=int, default=256)
+parser.add_argument("--dim_embedding", type=int, default=256)
+parser.add_argument("--dim_hidden", type=int, default=512)
 parser.add_argument("--checkpoint_path", type=str, required=True)
 # Search
-parser.add_argument("--batch_size", type=int, default=128)
+parser.add_argument("--batch_size", type=int, default=64)
 parser.add_argument("--num_workers", type=int, default=1)
 parser.add_argument("--beam_size", type=int, default=1)
 
@@ -36,7 +37,7 @@ def main():
     # Build datasets
     dataset = AdvertisementDataset(args.data_file, args.spm_file)
     indices = list(range(len(dataset)))
-    sampler = SequentialSampler(indices[-100:])
+    sampler = SequentialSampler(indices[int(0.9 * len(dataset)):])
     loader = DataLoader(
         dataset,
         sampler=sampler,
@@ -49,7 +50,8 @@ def main():
     model = AdvertisementGenerator(
         num_embeddings=len(dataset.sp),
         num_categories=len(dataset.categories),
-        dim_model=args.dim_model,
+        dim_hidden=args.dim_hidden,
+        dim_embedding=args.dim_embedding,
     ).to(device)
     model.load_state_dict(torch.load(args.checkpoint_path))
     model.eval()
