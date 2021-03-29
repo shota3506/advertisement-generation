@@ -59,7 +59,7 @@ def main():
     searcher = BeamSearch(3, beam_size=args.beam_size)
 
     with torch.no_grad():
-        for _, categories, keyphrases in tqdm(loader):
+
             categories, keyphrases = categories.to(device), keyphrases.to(device)
             keyphrases_mask = (keyphrases[:, :, 0] == 0)
             keyphrases_padding_mask = (keyphrases == 0)
@@ -71,7 +71,13 @@ def main():
             start_state = {'memory': memory, 'categories': categories, 'keyphrases_mask': keyphrases_mask}
 
             predictions, log_probabilities = searcher.search(start_predictions, start_state, model.step)
-            for preds in predictions:
+            for i in range(len(predictions)):
+                print("Category:", dataset.categories[categories[i].item()])
+                
+                kps = [kp.tolist() for kp in keyphrases[i] if kp[0] != 0]
+                print("Keyphrases:", ', '.join([dataset.sp.decode(kp) for kp in kps]))
+
+                preds = predictions[i]
                 for pred in preds:
                     pred = pred[(pred != 0) & (pred != 3)].tolist()
                     hyp = dataset.sp.decode(pred)
