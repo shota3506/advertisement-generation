@@ -59,7 +59,7 @@ def main():
     searcher = BeamSearch(3, beam_size=args.beam_size)
 
     with torch.no_grad():
-
+        for txts, categories, keyphrases in loader:
             categories, keyphrases = categories.to(device), keyphrases.to(device)
             keyphrases_mask = (keyphrases[:, :, 0] == 0)
             keyphrases_padding_mask = (keyphrases == 0)
